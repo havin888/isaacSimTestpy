@@ -1,4 +1,4 @@
-#opening testingRel file successfully
+#opening testingReal file successfully
 #getting the right robot and object data from .usd file (by importing pxr)
 
 from isaacsim.simulation_app import SimulationApp
@@ -34,8 +34,8 @@ for prim in stage.Traverse():
     elif "cube" in name:
         found_cube = str(prim.GetPath())
 
-print(f"🔍Franka path: {found_franka}")
-print(f"🔍Cube path: {found_cube}")
+print(f"Franka path: {found_franka}")
+print(f"Cube path: {found_cube}")
 
 if not found_franka:
     raise RuntimeError("Could not find Franka prim in the USD stage.")
@@ -55,7 +55,7 @@ with open(csv_path, "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(["Step", "X", "Y", "Z"]) #need to add all of Franka's joint components
 
-    print("🚀Starting simulation...")
+    print("Starting simulation...")
     for step in range(200):
         world.step(render=True)
 
