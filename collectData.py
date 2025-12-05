@@ -10,6 +10,13 @@ from omni.isaac.core import World
 from omni.usd import get_context
 import csv
 import os
+import numpy as np
+from isaacsim.core.prims import Articulation
+
+exts."omni.kit.window.script_editor".snippetFolders = [ #folder to look for snippets
+    "${kit}/snippets",
+    "C:/home/havin/Documents/testingReal.usd"
+]
 
 stage_path = "/home/havin/Documents/testingReal.usd"
 
@@ -51,39 +58,45 @@ if franka is None:
 csv_path = "/home/havin/Documents/franka_gripper_data.csv"
 os.makedirs(os.path.dirname(csv_path), exist_ok=True)
 
+franka = Articulation(prim_paths_expr="/World/Franka")
+
+joint_names = franka.joint_names
+print("Number of joints:", franka.num_joints)
+print("Joint names:", joint_names)
+print("Joint order:")
+for i, name in enumerate(joint_names):
+    print(i, name)
+
 with open(csv_path, "w", newline="") as f:
     writer = csv.writer(f)
-    writer.writerow(["Step", "X", "Y", "Z"]) #need to add all of Franka's joint components
+    header = ["timestep"] + list(joint_names)
+    writer.writerow(header)
 
     print("Starting simulation...")
-    for step in range(200):
+    for step in range(200): #deleting this part, will work on it
         world.step(render=True)
-
-        if franka and step == 20: # need to work on this part to actually grab the object
-            try:
-                franka.gripper.close()
-            except Exception as e:
-                print(f"Could not close gripper at step {step}: {e}")
-
-        if franka and step == 100: #delete this part
-            try:
-                franka.arm.set_joint_positions(
-                    [0.0, -0.5, 0.0, -1.5, 0.0, 1.0, 0.0]
-                )
-            except Exception as e:
-                print(f"Could not move arm: {e}")
-
         try:
-            if franka and hasattr(franka, "end_effector"): #re-write all the steps to connect joints
-                pos, _ = franka.end_effector.get_world_pose()
-            else:
-                prim = stage.GetPrimAtPath(found_franka)
-                xform = UsdGeom.Xformable(prim)
-                mat = xform.GetLocalTransformation()
-                pos = mat.ExtractTranslation()
-            writer.writerow([step, pos[0], pos[1], pos[2]])
+            if franka:
+                if step >= 20 and step < 60:
+                    q = np.array(franka.get_joint_positions()).reshape(-1)
+
+                    q[-2] += 0.0005
+                    q[-1] -= 0.0005
+
+                    franka.set_joint_positions(q.tolist())
+
+                if step >= 100:
+                    q = np.array(franka.get_joint_positions()).reshape(-1)
+                    q[1] -= 0.001
+                    franka.set_joint_positions(q.tolist())
         except Exception as e:
-            print(f"Failed to record position at step {step}: {e}")
+            print(f"Motion command failed at step {step}: {e}")
+    try:
+        q = np.array(franka.get_joint_positions()).reshape(-1)
+        row = [step] + q.tolist()
+        writer.writerow(row)
+    except Exception as e:
+        print(f"Failed to record joint positions at step {step}: {e}")
 
 print(f"Simulation completed, data saved to: {csv_path}")
 simulation_app.close()
